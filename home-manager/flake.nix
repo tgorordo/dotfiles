@@ -19,8 +19,8 @@
     in
     {
       homeConfigurations = {
-        "you@tensor" = home-manager.lib.homeManagerConfiguration { inherit pkgs; extraSpecialArgs = { inherit inputs; }; modules = [ ./home.nix ]; };
-        "you@vector" = home-manager.lib.homeManagerConfiguration { inherit pkgs; extraSpecialArgs = { inherit inputs; }; modules = [ ./home.nix ]; };
+        "tgorordo@tensor" = home-manager.lib.homeManagerConfiguration { inherit pkgs; extraSpecialArgs = { inherit inputs; }; modules = [ ./home.nix ]; };
+        "tgorordo@vector" = home-manager.lib.homeManagerConfiguration { inherit pkgs; extraSpecialArgs = { inherit inputs; }; modules = [ ./home.nix ]; };
       };
     };
 }

@@ -1,11 +1,19 @@
 [init]
 	defaultBranch = main
+	
 [user]
 	email = tgorordo@proton.me
 	name = Thomas (Tom) C. Gorordo
 	signingkey = E0ACF8B14679F35EC65934ED29D7C746CC4ED6C1
 [commit]
 	gpgsign = true
+
+#[user]
+#	email = tcgorordo@gmail.com
+#	name = Thomas (Tom) C. Gorordo
+#	signingkey = 9264F947F5A7EB44F0CCE03C0CBED22BB0D94490
+#[commit]
+#	gpgsign = true
 
 [url "https://git.ket.dev"]
 	insteadOf = gk:
