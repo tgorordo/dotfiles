@@ -35,7 +35,6 @@ packages:
       - 'ripgrep'
       - 'ripgrep-all'
       - 'sd'
-      - 'starship'
       - 'zig'
       - 'dune'
       - 'ocaml'
@@ -48,7 +47,6 @@ packages:
       - 'hyperfine'
       - 'yazi'
       - 'zoxide'
-      - 'watchman'
       - 'shellcheck'
     pipx:
       - 'ansible'
