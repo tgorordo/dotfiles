@@ -1,0 +1,45 @@
+# Added by ForgeCode installer
+export PATH="/home/tgorordo/.local/bin:$PATH"
+# .bashrc
+
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+eval "$(starship init bash)"
+
+
+alias ls='ls --color=auto'
+PS1='[\u@\h \W]\$ '
+. "$HOME/.cargo/env"
+
+export EDITOR=/usr/bin/hx
+
+# >>> juliaup initialize >>>
+
+# !! Contents within this block are managed by juliaup !!
+
+case ":$PATH:" in
+    *:/home/tgorordo/.juliaup/bin:*)
+        ;;
+
+    *)
+        export PATH=/home/tgorordo/.juliaup/bin${PATH:+:${PATH}}
+        ;;
+esac
+# Tab completion for juliaup and julia channel selection
+[ -f "/home/tgorordo/.julia/juliaup/completions/bash.sh" ] && source "/home/tgorordo/.julia/juliaup/completions/bash.sh"
+
+# <<< juliaup initialize <<<
+
+
+[ -f "/home/tgorordo/.ghcup/env" ] && . "/home/tgorordo/.ghcup/env" # ghcup-env
+
+# Created by `pipx` on 2025-05-23 23:00:00
+export PATH="$PATH:/home/tgorordo/.local/bin"
+
+export XBPS_DISTDIR=/opt/void-packages
+
+export GPG_TTY=$(tty)
+
+source /home/tgorordo/.config/broot/launcher/bash/br
+
+eval "$(direnv hook bash)"
