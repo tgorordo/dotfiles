@@ -27,6 +27,7 @@ packages:
       - 'fd'
       - 'helix'
       - 'neovim'
+      - 'vim'
       - 'fzf'
       - 'grep'
       - 'htop'
