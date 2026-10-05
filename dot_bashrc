@@ -43,3 +43,5 @@ export GPG_TTY=$(tty)
 source /home/tgorordo/.config/broot/launcher/bash/br
 
 eval "$(direnv hook bash)"
+
+source /home/tgorordo/.local/bin/onlyswitch.sh
