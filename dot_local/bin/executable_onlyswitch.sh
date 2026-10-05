@@ -18,7 +18,7 @@ onlyswitch() {
 		  ;;
 	  system|sys|sw)
 	    unset GNUPGHOME
-		  echo "gpg -> system ring  (GNUPGHOME=$GNUPGHOME - should be ~/.gnupg)"
+		  echo "gpg -> system ring  (~/.gnupg)"
 		  ;;
 	  status)
 	    if [ -n "$GNUPGHOME" ]; then
