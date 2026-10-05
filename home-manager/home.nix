@@ -1,5 +1,7 @@
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, lib, inputs, ... }:
+#let
 
+#in
 {
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
@@ -95,5 +97,28 @@
     enable = true;
     nix-direnv.enable = true;
   };
-  programs.zsh.enable = true;
+  
+  programs.zsh = {
+    enable = true;
+    
+    enableCompletion = true;
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
+    
+    history = {
+      size = 50000;
+      save = 50000;
+      ignoreDups = true;
+      share = true;                # share history between open zsh sessions
+    };
+
+    envExtra = ''
+      case ":$PATH:" in
+        *":$HOME/.nix-profile/bin:"*) ;;
+        *) export PATH="$HOME/.nix-profile/bin:$PATH" ;;
+      esac
+    '';
+
+    initContent = builtins.readFile ./zshrc.zsh;
+  };
 }
