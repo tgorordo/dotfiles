@@ -1,10 +1,12 @@
 #!/bin/sh
-# home.nix: {{ include "home-manager/home.nix" | sha256sum }}
-# flake.nix: {{ include "home-manager/flake.nix" | sha256sum }}
+# home.nix:   {{ include "home-manager/home.nix" | sha256sum }}
+# flake.nix:  {{ include "home-manager/flake.nix" | sha256sum }}
 # flake.lock: {{ include "home-manager/flake.lock" | sha256sum }}
 set -e
+export PATH="$HOME/.nix-profile/bin:$PATH"
 if command -v home-manager >/dev/null; then
-  home-manager switch
+  home-manager switch -b backup
 else
-  nix run home-manager/master -- switch
+  nix --extra-experimental-features 'nix-command flakes' \
+    run home-manager/master -- switch -b backup
 fi
