@@ -8,18 +8,19 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    llm-agents.url = "github:numtide/llm-agents.nix";
   };
 
   outputs =
-    { nixpkgs, home-manager, ... }:
+    { nixpkgs, home-manager, llm-agents, ... }@inputs:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
     in
     {
       homeConfigurations = {
-        "you@tensor" = home-manager.lib.homeManagerConfiguration { inherit pkgs; modules = [ ./home.nix ]; };
-        "you@vector" = home-manager.lib.homeManagerConfiguration { inherit pkgs; modules = [ ./home.nix ]; };
+        "you@tensor" = home-manager.lib.homeManagerConfiguration { inherit pkgs; extraSpecialArgs = { inherit inputs; }; modules = [ ./home.nix ]; };
+        "you@vector" = home-manager.lib.homeManagerConfiguration { inherit pkgs; extraSpecialArgs = { inherit inputs; }; modules = [ ./home.nix ]; };
       };
     };
 }

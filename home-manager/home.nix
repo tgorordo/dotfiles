@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   # Home Manager needs a bit of information about you and the paths it should
@@ -29,10 +29,12 @@
     # # "Hello, world!" when run.
     # pkgs.hello
 
-    chezmoi
     # zotero # build is currently broken?
     logseq
     elan
+
+    pkgs.oh-my-zsh
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.forgecode
 
     # # It is sometimes useful to fine-tune packages, for example, by applying
     # # overrides. You can do that directly here, just don't forget the
@@ -47,8 +49,8 @@
     #   echo "Hello, ${config.home.username}!"
     # '')
 
-    (pkgs.writeShellScriptBin "hm" ''exec home-manager "$@"'')
-    (pkgs.writeShellScriptBin "cm" ''exec chezmoi "$@"'')
+    (pkgs.writeShellScriptBin "hmg" ''exec home-manager "$@"'')
+    (pkgs.writeShellScriptBin "czm" ''exec chezmoi "$@"'')
     
   ];
 
