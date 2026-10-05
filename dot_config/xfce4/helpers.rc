@@ -1,0 +1,4 @@
+TerminalEmulator=alacritty
+WebBrowser=firefox
+FileManager=thunar
+MailReader=thunderbridge

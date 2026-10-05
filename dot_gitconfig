@@ -1,0 +1,25 @@
+[init]
+	defaultBranch = main
+[user]
+	email = tgorordo@proton.me
+	name = Thomas (Tom) C. Gorordo
+	signingkey = E0ACF8B14679F35EC65934ED29D7C746CC4ED6C1
+[commit]
+	gpgsign = true
+
+[url "https://git.ket.dev"]
+	insteadOf = gk:
+[credential "https://git.ket.dev"]
+	helper = libsecret
+
+[url "https://github.com/"]
+	insteadOf = gh:
+[credential "https://github.com"]
+	helper = !/usr/bin/gh auth git-credential
+[url "https://gist.github.com"]
+	insteadOf = gs:
+[credential "https://gist.github.com"]
+	helper = !/usr/bin/gh auth git-credential
+
+[url "https://gitlab.com"]
+	insteadOf = gl:

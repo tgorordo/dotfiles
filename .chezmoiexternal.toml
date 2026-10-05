@@ -1,0 +1,4 @@
+["doc/zk"]
+  type = "git-repo"
+  url = "https://github.com/tgorordo/zk.git"
+  refreshPeriod = "168h"

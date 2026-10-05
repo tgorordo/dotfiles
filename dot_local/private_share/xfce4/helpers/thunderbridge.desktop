@@ -1,0 +1,9 @@
+[Desktop Entry]
+Nodisplay=true
+Version=1.0
+Encoding=UTF-8
+Type=X-XFCE-Helper
+X-XFCE-Category=MailReader
+Name=thunderbird-bridge
+X-XFCE-Commands=$HOME/.local/bin/thunderbird-bridge
+X-XFCE-CommandsWithParameter=$HOME/.local/bin/thunderbird-bridge "%s"

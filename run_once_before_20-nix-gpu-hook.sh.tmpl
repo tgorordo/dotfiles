@@ -1,0 +1,17 @@
+#!/bin/sh
+{{ if eq .chezmoi.osRelease.id "void" -}}
+set -e
+sudo mkdir -p /etc/tmpfiles.d
+if ! grep -q 'nix-gpu-tmpfiles' /etc/rc.local 2>/dev/null; then
+  sudo tee -a /etc/rc.local >/dev/null <<'EOF'
+
+# nix-gpu-tmpfiles: apply tmpfiles "L" rules (no systemd on Void)
+conf=/etc/tmpfiles.d/non-nixos-gpu.conf
+if [ -e "$conf" ]; then
+  awk '$1 ~ /^L/ {print $2, $NF}' "$conf" | while read -r link target; do
+    ln -sfn "$target" "$link"
+  done
+fi
+EOF
+fi
+{{ end -}}

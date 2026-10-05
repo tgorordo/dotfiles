@@ -1,0 +1,10 @@
+#!/bin/sh
+# home.nix: {{ include "home-manager/home.nix" | sha256sum }}
+# flake.nix: {{ include "home-manager/flake.nix" | sha256sum }}
+# flake.lock: {{ include "home-manager/flake.lock" | sha256sum }}
+set -e
+if command -v home-manager >/dev/null; then
+  home-manager switch
+else
+  nix run home-manager/master -- switch
+fi

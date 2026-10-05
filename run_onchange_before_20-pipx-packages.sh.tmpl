@@ -1,0 +1,5 @@
+#!/bin/sh
+{{ if eq .chezmoi.osRelease.id "void" -}}
+set -e
+pipx install {{ join " " .packages.void.pipx }}
+{{ end -}}

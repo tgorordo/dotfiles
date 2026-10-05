@@ -1,0 +1,11 @@
+#!/bin/sh
+{{ if eq .chezmoi.osRelease.id "void" -}}
+set -e
+command -v nix >/dev/null || sudo xbps-install -Sy nix
+[ -e /var/service/nix-daemon ] || sudo ln -s /etc/sv/nix-daemon /var/service/
+
+i=0
+until [ -S /nix/var/nix/daemon-socket/socket ] || [ "$i" -ge 30 ]; do
+  sleep 1; i=$((i+1))
+done
+{{ end -}}

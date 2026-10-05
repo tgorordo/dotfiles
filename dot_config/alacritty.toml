@@ -1,0 +1,6 @@
+[terminal]
+shell = { program = "zellij", args = ["-l", "compact"] }
+
+[font]
+normal = { family = "FiraCode", style = "Retina" }
+

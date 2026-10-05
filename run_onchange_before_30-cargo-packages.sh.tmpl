@@ -1,0 +1,5 @@
+#!/bin/sh
+{{ if eq .chezmoi.osRelease.id "void" -}}
+set -e
+cargo install {{ join " " .packages.void.cargo }}
+{{ end -}}
