@@ -116,6 +116,8 @@
     };
 
     envExtra = ''
+      export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
+      gpg-connect-agent updatestartuptty /bye >/dev/null
       case ":$PATH:" in
         *":$HOME/.nix-profile/bin:"*) ;;
         *) export PATH="$HOME/.nix-profile/bin:$PATH" ;;
