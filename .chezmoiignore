@@ -2,3 +2,19 @@ README.md
 
 home-manager
 xbps-packages.txt
+
+
+.gnupg/private-keys-v1.d
+.gnupg/openpgp-revocs.d
+.gnupg/public-keys.d
+.gnupg/*.kbx
+.gnupg/*.kbx~
+.gnupg/trustdb.gpg
+.gnupg/random_seed
+.gnupg/S.*
+.gnupg/onlykey/*.kbx*
+.gnupg/onlykey/trustdb.gpg
+.gnupg/onlykey/env
+.gnupg/onlykey/pubkey.asc
+.gnupg/onlykey/ownertrust.txt
+keys
