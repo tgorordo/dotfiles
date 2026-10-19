@@ -39,9 +39,11 @@ export PATH="$PATH:/home/tgorordo/.local/bin"
 export XBPS_DISTDIR=/opt/void-packages
 
 export GPG_TTY=$(tty)
+export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
+gpg-connect-agent updatestartuptty /bye >/dev/null
+source /home/tgorordo/.config/OnlyKey/onlykey.sh
+source /home/tgorordo/.local/bin/onlyswitch.sh
 
 source /home/tgorordo/.config/broot/launcher/bash/br
 
 eval "$(direnv hook bash)"
-
-source /home/tgorordo/.local/bin/onlyswitch.sh
