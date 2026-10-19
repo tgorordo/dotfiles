@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# gpg that signs with the OnlyKey when it's plugged in, and does everything
+# else with the system ring.
+#
+# Routing:
+#   pure signing (-s/--sign, --clearsign, -b/--detach-sign, git's -bsau)
+#       -> OnlyKey ring if the OnlyKey is plugged in, else the software [S]
+#   anything else (decrypt, encrypt, verify, listing, ...)
+#       -> system ring. It has every secret the OnlyKey ring lacks (Kyber,
+#          [A]) and everyone else's certs, which verifying and encrypting need.
+#          OnlyKey decryption isn't used: stock libagent can't answer GnuPG
+#          2.5's PKDECRYPT --kem=PGP request.
+#
+# Both signing paths use subkey 217F…, so signatures verify identically.
+# Install to ~/.local/bin/gpg-ok;  git config --global gpg.program gpg-ok
+# Force a side with OK_MODE=onlykey or OK_MODE=system (default: auto).
+source "$HOME/.config/OnlyKey/onlykey.sh"   # provides OK_HOME, ok_agent_up
+
+onlykey_present() {
+	# OnlyKey USB ID 1d50:60fc; treated as absent without lsusb
+	command -v lsusb >/dev/null 2>&1 && lsusb -d 1d50:60fc >/dev/null 2>&1
+}
+
+# Is this invocation a signing operation that doesn't also encrypt or decrypt?
+is_pure_sign() {
+	local a sign=0 other=0 rest c i
+	for a in "$@"; do
+		case "$a" in
+		--) break ;;
+		--sign | --clearsign | --clear-sign | --detach-sign) sign=1 ;;
+		--decrypt | --encrypt | --symmetric | --verify | --encrypt-files | --decrypt-files) other=1 ;;
+		--*) ;;
+		-?*)
+			# a cluster of short options, e.g. -bsau; stop at the first
+			# option that takes a value, since the rest is that value (-u217F…)
+			rest=${a#-}
+			for ((i = 0; i < ${#rest}; i++)); do
+				c=${rest:i:1}
+				case "$c" in
+				s | b) sign=1 ;;
+				d | e | c) other=1 ;;
+				u | r | R | o | z | f | N) break ;;
+				esac
+			done
+			;;
+		esac
+	done
+	[ "$sign" = 1 ] && [ "$other" = 0 ]
+}
+
+use_ok=0
+case "${OK_MODE:-auto}" in
+onlykey) use_ok=1 ;;
+system) use_ok=0 ;;
+*)
+	if is_pure_sign "$@"; then
+		if onlykey_present; then
+			use_ok=1
+		else
+			echo "gpg-ok: OnlyKey not found, signing with software key" >&2
+		fi
+	fi
+	;;
+esac
+
+if [ "$use_ok" = 1 ]; then
+	ok_agent_up || exit 1
+	export GNUPGHOME="$OK_HOME"
+else
+	unset GNUPGHOME
+fi
+exec gpg "$@"
