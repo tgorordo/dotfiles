@@ -22,4 +22,5 @@ end
 
 set -gx NIX_DAEMON_SOCKET_PATH /var/nix/daemon-socket/socket
 
-set PATH $PATH /home/tgorordo/.local/bin
+#set PATH $PATH /home/tgorordo/.local/bin
+fish_add_path --global --append ~/.local/bin
