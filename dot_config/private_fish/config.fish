@@ -15,7 +15,7 @@ if status is-interactive
     alias ffetch=fastfetch
 
     set -gx SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
-    gpg-connect-agent updatestartuptty /bye >/dev/null
+    gpg-connect-agent -q updatestartuptty /bye &>/dev/null
 
     alias ls=eza
 end
