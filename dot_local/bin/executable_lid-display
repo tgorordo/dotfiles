@@ -94,7 +94,9 @@ def on_external_power():
 
 def outputs():
     """{name: (is_primary, 'WxH+X+Y' or None if inactive)} for connected outputs."""
-    res = subprocess.run(["xrandr", "--query"], capture_output=True, text=True).stdout
+    # --current: use X's cached state. A full probe re-reads every EDID (~0.2-0.5 s
+    # per output per call); X already re-probes by itself on hotplug events.
+    res = subprocess.run(["xrandr", "--query", "--current"], capture_output=True, text=True).stdout
     outs = {}
     for m in re.finditer(r"^(\S+) connected( primary)?(?: (\d+x\d+\+\d+\+\d+))?", res, re.M):
         outs[m.group(1)] = (bool(m.group(2)), m.group(3))
@@ -113,7 +115,7 @@ def parse_geom(geom):
 def output_mode_scale(name):
     """(mode XID, scale x, scale y) of an active output, so the exact mode
     (incl. refresh rate) and RandR scale transform can be put back later."""
-    res = subprocess.run(["xrandr", "--verbose"], capture_output=True, text=True).stdout
+    res = subprocess.run(["xrandr", "--verbose", "--current"], capture_output=True, text=True).stdout
     m = re.search(rf"^{re.escape(name)} connected[^\n]*?\((0x[0-9a-f]+)\).*?\n\s+Transform:\s+(\S+) \S+ \S+\n\s+\S+ (\S+)",
                   res, re.M | re.S)
     return (m.group(1), float(m.group(2)), float(m.group(3))) if m else (None, 1.0, 1.0)
