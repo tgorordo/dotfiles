@@ -34,6 +34,7 @@
     # zotero # build is currently broken?
     logseq
     elan
+    zotero
 
     pkgs.oh-my-zsh
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.forgecode
