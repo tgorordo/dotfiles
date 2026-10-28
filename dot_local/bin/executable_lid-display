@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""lid-display: what the X session does with the internal panel when the lid moves.
+
+Suspend policy itself lives in elogind (/etc/elogind/logind.conf.d/20-lid.conf):
+  battery + undocked -> suspend, external power or docked -> ignore.
+This daemon only handles the display side, and never touches X while a
+suspend/resume is in flight (it does nothing on the battery+undocked path).
+
+  lid closed, another output active   -> turn the internal panel off
+  lid closed, on external power       -> blank the panel (DPMS off)
+  lid closed, battery, undocked       -> nothing (elogind suspends)
+  lid opened                          -> undo whatever was done on close
+  lid closed and we become battery+undocked (AC unplugged / monitor
+  unplugged)                          -> suspend via logind
+
+Lid events are read directly from the "Lid Switch" input device, which needs
+a udev rule giving the video group read access (70-lid-switch.rules).
+"""
+import glob
+import os
+import re
+import select
+import struct
+import subprocess
+import sys
+import time
+
+INTERNAL = "eDP-1"
+EV_SW, SW_LID = 0x05, 0x00
+EVENT_FMT = "llHHi"
+EVENT_SIZE = struct.calcsize(EVENT_FMT)
+SETTLE = 2.0  # seconds to let xfsettingsd react to a monitor/AC change first
+LOG = os.path.expanduser("~/.cache/lid-display.log")
+
+
+def log(msg):
+    with open(LOG, "a") as f:
+        f.write(time.strftime("%F %T ") + msg + "\n")
+
+
+def run(*cmd):
+    return subprocess.run(cmd, capture_output=True, text=True).returncode
+
+
+def find_lid_device():
+    for name in glob.glob("/sys/class/input/event*/device/name"):
+        with open(name) as f:
+            if f.read().strip() == "Lid Switch":
+                return "/dev/input/" + name.split("/")[4]
+    return None
+
+
+def lid_closed_now():
+    for state in glob.glob("/proc/acpi/button/lid/*/state"):
+        with open(state) as f:
+            return "closed" in f.read()
+    return False
+
+
+def on_external_power():
+    # Same rule as elogind: any online non-battery supply that powers the system.
+    for psy in glob.glob("/sys/class/power_supply/*"):
+        try:
+            with open(psy + "/type") as f:
+                if f.read().strip() == "Battery":
+                    continue
+            scope = psy + "/scope"
+            if os.path.exists(scope):
+                with open(scope) as f:
+                    if f.read().strip() == "Device":
+                        continue
+            with open(psy + "/online") as f:
+                if f.read().strip() == "1":
+                    return True
+        except OSError:
+            pass
+    return False
+
+
+def outputs():
+    """{name: (is_primary, 'WxH+X+Y' or None if inactive)} for connected outputs."""
+    res = subprocess.run(["xrandr", "--query"], capture_output=True, text=True).stdout
+    outs = {}
+    for m in re.finditer(r"^(\S+) connected( primary)?(?: (\d+x\d+\+\d+\+\d+))?", res, re.M):
+        outs[m.group(1)] = (bool(m.group(2)), m.group(3))
+    return outs
+
+
+def other_active(outs):
+    return [n for n, (_, geom) in outs.items() if n != INTERNAL and geom]
+
+
+def parse_geom(geom):
+    """'WxH+X+Y' -> (w, h, x, y)"""
+    return tuple(int(v) for v in re.match(r"(\d+)x(\d+)\+(\d+)\+(\d+)", geom).groups())
+
+
+def output_mode_scale(name):
+    """(mode XID, scale x, scale y) of an active output, so the exact mode
+    (incl. refresh rate) and RandR scale transform can be put back later."""
+    res = subprocess.run(["xrandr", "--verbose"], capture_output=True, text=True).stdout
+    m = re.search(rf"^{re.escape(name)} connected[^\n]*?\((0x[0-9a-f]+)\).*?\n\s+Transform:\s+(\S+) \S+ \S+\n\s+\S+ (\S+)",
+                  res, re.M | re.S)
+    return (m.group(1), float(m.group(2)), float(m.group(3))) if m else (None, 1.0, 1.0)
+
+
+def layout_args(layout, extra=None):
+    """xrandr args placing every active output of layout, origin-normalised,
+    with a framebuffer that exactly fits (so nothing ends up overlapping)."""
+    rects = {n: parse_geom(g) for n, (_, g) in layout.items() if g}
+    minx = min(x for _, _, x, _ in rects.values())
+    miny = min(y for _, _, _, y in rects.values())
+    fbw = max(x + w for w, _, x, _ in rects.values()) - minx
+    fbh = max(y + h for _, h, _, y in rects.values()) - miny
+    args = ["--fb", f"{fbw}x{fbh}"]
+    for n, (w, h, x, y) in rects.items():
+        args += ["--output", n, "--pos", f"{x - minx}x{y - miny}"] + (extra or {}).get(n, [])
+    return args
+
+
+class LidDisplay:
+    def __init__(self):
+        self.saved = None      # (layout, internal (mode, sx, sy)) from before the panel went off
+        self.blanked = False   # we forced DPMS off
+        self.lid_closed = lid_closed_now()
+        self.check_at = None   # pending re-evaluation after AC/monitor change
+        self.last_power = on_external_power()
+        self.last_docked = bool(other_active(outputs()))
+
+    def on_close(self):
+        self.lid_closed = True
+        outs = outputs()
+        ext = other_active(outs)
+        primary, geom = outs.get(INTERNAL, (False, None))
+        if ext and geom:
+            mode = output_mode_scale(INTERNAL)
+            remaining = {n: v for n, v in outs.items() if n != INTERNAL}
+            extra = {ext[0]: ["--primary"]} if primary else None
+            cmd = ["xrandr", "--output", INTERNAL, "--off"] + layout_args(remaining, extra)
+            if run(*cmd) == 0:
+                self.saved = (outs, mode)
+                log(f"lid closed, docked: {INTERNAL} off ({geom}), using {', '.join(ext)}")
+        elif on_external_power():
+            run("xset", "dpms", "force", "off")
+            self.blanked = True
+            log("lid closed on external power: panel blanked")
+        else:
+            log("lid closed on battery: leaving it to elogind (suspend)")
+
+    def on_open(self):
+        self.lid_closed = False
+        self.check_at = None
+        if self.blanked:
+            run("xset", "dpms", "force", "on")
+            run("xset", "s", "reset")
+            self.blanked = False
+            log("lid opened: panel unblanked")
+        if self.saved:
+            self.restore_panel()
+
+    def restore_panel(self):
+        layout, (mode, sx, sy) = self.saved
+        self.saved = None
+        if outputs().get(INTERNAL, (False, None))[1]:
+            log(f"lid opened: {INTERNAL} already on")
+            return
+        # Only restore outputs that are still active (a monitor may have been
+        # unplugged while the lid was closed).
+        now = outputs()
+        layout = {n: v for n, v in layout.items() if n == INTERNAL or now.get(n, (0, None))[1]}
+        if mode is None:
+            w, h, _, _ = parse_geom(layout[INTERNAL][1])
+            mode = f"{round(w / sx)}x{round(h / sy)}"
+        extra = {INTERNAL: ["--mode", mode, "--scale", f"{sx}x{sy}"]}
+        primaries = [n for n, (p, _) in layout.items() if p]
+        if primaries:
+            extra.setdefault(primaries[0], []).append("--primary")
+        cmd = ["xrandr"] + layout_args(layout, extra)
+        geom = ", ".join(f"{n} {g}" for n, (_, g) in layout.items())
+        # Normally succeeds first time; the retries only cover opening the lid
+        # while X is still getting the display back from a suspend.
+        for _ in range(10):
+            run(*cmd)
+            if outputs().get(INTERNAL, (False, None))[1]:
+                log(f"lid opened: {INTERNAL} restored ({geom})")
+                return
+            time.sleep(0.5)
+        log(f"lid opened: FAILED to restore {INTERNAL}")
+
+    def reevaluate(self):
+        """AC or monitors changed while the lid is closed."""
+        power, docked = on_external_power(), bool(other_active(outputs()))
+        lost = (self.last_power and not power) or (self.last_docked and not docked)
+        self.last_power, self.last_docked = power, docked
+        if not self.lid_closed or power or docked:
+            return
+        if lost:
+            # Make sure X will come back with the panel lit after resume.
+            if self.blanked:
+                run("xset", "dpms", "force", "on")
+                self.blanked = False
+            log("lid closed and now on battery + undocked: suspending")
+            run("loginctl", "suspend")
+
+    def loop(self, lid_dev):
+        lid = os.open(lid_dev, os.O_RDONLY)
+        mon = subprocess.Popen(
+            ["udevadm", "monitor", "--udev", "-s", "power_supply", "-s", "drm"],
+            stdout=subprocess.PIPE, text=True, bufsize=1)
+        log(f"started (lid {'closed' if self.lid_closed else 'open'}, device {lid_dev})")
+        while True:
+            timeout = None if self.check_at is None else max(0, self.check_at - time.monotonic())
+            ready, _, _ = select.select([lid, mon.stdout], [], [], timeout)
+            if lid in ready:
+                data = os.read(lid, EVENT_SIZE * 16)
+                for i in range(0, len(data) - EVENT_SIZE + 1, EVENT_SIZE):
+                    _, _, etype, code, value = struct.unpack_from(EVENT_FMT, data, i)
+                    if etype == EV_SW and code == SW_LID and bool(value) != self.lid_closed:
+                        self.on_close() if value else self.on_open()
+            if mon.stdout in ready:
+                line = mon.stdout.readline()
+                if not line:
+                    log("udevadm monitor exited")
+                    sys.exit(1)
+                if "change" in line or "add" in line or "remove" in line:
+                    self.check_at = time.monotonic() + SETTLE
+            if self.check_at is not None and time.monotonic() >= self.check_at:
+                self.check_at = None
+                self.reevaluate()
+
+
+def main():
+    dev = find_lid_device()
+    if not dev:
+        log("no 'Lid Switch' input device found")
+        sys.exit(1)
+    if not os.access(dev, os.R_OK):
+        log(f"cannot read {dev}: install /etc/udev/rules.d/70-lid-switch.rules")
+        sys.exit(1)
+    LidDisplay().loop(dev)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Lid display policy
+Comment=Turn off / blank the internal panel on lid close when docked or on AC
+Exec=/home/tgorordo/.local/bin/lid-display
+OnlyShowIn=XFCE;
+X-XFCE-Autostart-Override=true
