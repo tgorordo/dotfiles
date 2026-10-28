@@ -1,6 +1,7 @@
 { config, pkgs, lib, inputs, ... }:
 #let
 
+
 #in
 {
   # Home Manager needs a bit of information about you and the paths it should
@@ -34,7 +35,7 @@
     # zotero # build is currently broken?
     logseq
     elan
-    zotero
+    inputs.nixpkgs-zotero.legacyPackages.${pkgs.system}.zotero
 
     pkgs.oh-my-zsh
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.forgecode
