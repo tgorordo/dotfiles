@@ -6,8 +6,8 @@ Suspend policy itself lives in elogind (/etc/elogind/logind.conf.d/20-lid.conf):
 This daemon only handles the display side, and never touches X while a
 suspend/resume is in flight (it does nothing on the battery+undocked path).
 
-  lid closed, another output active   -> turn the internal panel off
-  lid closed, on external power       -> blank the panel (DPMS off)
+  lid closed, another output active   -> turn the internal panel off (+ lock)
+  lid closed, on external power       -> lock + blank the panel (DPMS off)
   lid closed, battery, undocked       -> nothing (elogind suspends)
   lid opened                          -> undo whatever was done on close
   lid closed and we become battery+undocked (AC unplugged / monitor
@@ -31,6 +31,10 @@ EVENT_FMT = "llHHi"
 EVENT_SIZE = struct.calcsize(EVENT_FMT)
 SETTLE = 2.0  # seconds to let xfsettingsd react to a monitor/AC change first
 LOG = os.path.expanduser("~/.cache/lid-display.log")
+# Lock the session on lid close when we're *not* suspending (on suspend,
+# xfce4-screensaver's /lock/sleep-activation already locks).
+LOCK_WHEN_DOCKED = True
+LOCK_ON_AC = True
 
 
 def log(msg):
@@ -40,6 +44,17 @@ def log(msg):
 
 def run(*cmd):
     return subprocess.run(cmd, capture_output=True, text=True).returncode
+
+
+def lock():
+    # xflock4 asks xfce4-session to lock (-> xfce4-screensaver) and waits for
+    # the reply with no D-Bus timeout, so cap it to never stall lid handling.
+    try:
+        rc = subprocess.run(["xflock4"], capture_output=True, timeout=3).returncode
+        if rc != 0:
+            log(f"xflock4 failed (exit {rc})")
+    except subprocess.TimeoutExpired:
+        log("xflock4 timed out after 3 s")
 
 
 def find_lid_device():
@@ -140,7 +155,11 @@ class LidDisplay:
             if run(*cmd) == 0:
                 self.saved = (outs, mode)
                 log(f"lid closed, docked: {INTERNAL} off ({geom}), using {', '.join(ext)}")
+            if LOCK_WHEN_DOCKED:
+                lock()
         elif on_external_power():
+            if LOCK_ON_AC:
+                lock()
             run("xset", "dpms", "force", "off")
             self.blanked = True
             log("lid closed on external power: panel blanked")
